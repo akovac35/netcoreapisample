@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: sql-server
+    environment:
+      SA_PASSWORD: password123!
+      ACCEPT_EULA: Y
+    ports:
+      - 1433:1433
+    volumes:
+      - db-data:/var/opt/mssql
+  dotnet-api:
+    image: sample/dotnet-api
+    container_name: dotnet-api
+    ports:
+      - 8080:80
+    depends_on:
+      - sql-server
+    environment:
+      - SampleConfig__DbConnectionString=Server=sql-server;Database=SMPL;User=sa;Password=password123!;TrustServerCertificate=True;
+      - SampleConfig__JwtConfig__JwtSecretKey=SECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRET
+      - ASPNETCORE_ENVIRONMENT=production
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+volumes:
+  db-data:
