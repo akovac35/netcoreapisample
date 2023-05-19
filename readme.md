@@ -28,6 +28,7 @@ To start the sample, run:
 
 * `./scripts/build_docker.sh`
 * `docker compose up`
+* `localhost:8080/swagger/index.html`
 
 The following is TODO:
 
