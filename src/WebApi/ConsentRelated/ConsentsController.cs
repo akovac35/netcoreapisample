@@ -11,6 +11,8 @@ namespace WebApi.ConsentRelated
     [ApiController]
     [Route("[controller]")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public class ConsentsController: ControllerBase
     {
         private readonly IMediator mediator;

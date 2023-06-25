@@ -8,6 +8,7 @@ namespace WebApi.InitializationRelated
 {
     [ApiController]
     [Route("[controller]")]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public class InitializationController : ControllerBase
     {
         private readonly IMediator mediator;

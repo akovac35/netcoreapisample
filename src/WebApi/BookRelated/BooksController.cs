@@ -13,6 +13,8 @@ namespace WebApi.BookRelated
     [ApiController]
     [Route("[controller]")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public class BooksController : ControllerBase
     {
         private readonly IMediator mediator;

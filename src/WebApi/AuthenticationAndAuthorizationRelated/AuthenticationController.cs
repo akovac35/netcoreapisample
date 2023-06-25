@@ -9,6 +9,7 @@ namespace WebApi.AuthenticationAndAuthorizationRelated
 {
     [ApiController]
     [Route("[controller]")]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public class AuthenticationController : ControllerBase
     {
         private readonly IMediator mediator;
