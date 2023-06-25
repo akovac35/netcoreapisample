@@ -1,6 +1,6 @@
 ﻿using FluentAssertions;
 using FluentValidation.TestHelper;
-using WebApi.BookRelated.CommandAndQuery;
+using Infrastructure.BookRelated.CommandAndQuery;
 
 namespace WebApiTests.Tests.BookRelated
 {

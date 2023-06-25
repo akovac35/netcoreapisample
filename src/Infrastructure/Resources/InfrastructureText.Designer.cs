@@ -61,11 +61,20 @@ namespace Infrastructure.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to {0} with unique id {1} does not exist.
+        ///   Looks up a localized string similar to {0} with unique id {1} was not found.
         /// </summary>
         public static string DboNotFound {
             get {
                 return ResourceManager.GetString("DboNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invalid username and/or password.
+        /// </summary>
+        public static string Login_Invalid {
+            get {
+                return ResourceManager.GetString("Login_Invalid", resourceCulture);
             }
         }
     }

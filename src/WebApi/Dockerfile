@@ -6,6 +6,7 @@ FROM ${BUILD_IMAGE} AS builder
 COPY src/ /src/
 COPY ProjectConfig.xml /
 
+ARG SkipGenerateSwagger=true
 RUN dotnet restore /src/WebApi/WebApi.csproj && \
     dotnet publish /src/WebApi/WebApi.csproj -c Release -o /app --no-restore
 
@@ -25,4 +26,4 @@ COPY --chown=$UID:$UID --from=builder /app .
 
 USER $USER
 EXPOSE 80
-ENTRYPOINT ["dotnet", "WebApi.dll","--useInMemoryDb","false"]
+ENTRYPOINT ["dotnet", "WebApi.dll"]

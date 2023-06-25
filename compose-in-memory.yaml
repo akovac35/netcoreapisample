@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  dotnet-api-in-memory:
+    image: sample/dotnet-api
+    container_name: dotnet-api-in-memory
+    ports:
+      - 8080:80
+    environment:
+      - SampleConfig__DbConnectionString=DataSource=sampledb;mode=memory;cache=shared;
+      - SampleConfig__JwtConfig__JwtSecretKey=SECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRET
+      - SampleConfig__DbType=None
+      - SampleConfig__UseInMemoryDb=true
+      - ASPNETCORE_ENVIRONMENT=production
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false

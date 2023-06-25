@@ -19,10 +19,20 @@ namespace Infrastructure.Behaviors
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            using var transactionScope = databaseUnitOfWork.CreateTransactionScope();
-            var result = await next();
-            transactionScope.Complete();
-            return result;
+            // TODO HIGH rather use interfaces
+            // Queries do not need transactions
+            if (request.GetType().Name.ToUpperInvariant().EndsWith("QUERY", System.StringComparison.InvariantCulture))
+            {
+                var result = await next();
+                return result;
+            }
+            else
+            {
+                using var transactionScope = databaseUnitOfWork.CreateTransactionScope();
+                var result = await next();
+                transactionScope.Complete();
+                return result;
+            }
         }
     }
 }

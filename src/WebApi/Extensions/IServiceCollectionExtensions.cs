@@ -1,24 +1,31 @@
-﻿using System.CommandLine;
-using System.Runtime.Loader;
+﻿using System.Runtime.Loader;
 using System.Security.Claims;
 using System.Text;
 using Domain;
+using Domain.AuthorRelated;
 using Domain.BookRelated;
+using Domain.ConsentRelated;
 using Domain.Dtos;
 using Domain.Persistance;
 using FluentValidation;
+using Infrastructure.AuthorRelated;
 using Infrastructure.Behaviors;
 using Infrastructure.BookRelated;
+using Infrastructure.ConsentRelated;
 using Infrastructure.Diagnostics;
+using Infrastructure.Migrations.Oracle;
+using Infrastructure.Migrations.SqlServer;
 using Infrastructure.Persistence;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json.Converters;
+using NLog;
 using NLog.Extensions.Logging;
 using NLog.Web;
 using WebApi.Filters;
@@ -28,7 +35,7 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class IServiceCollectionExtensions
     {
-        public static IServiceCollection AddWebApi(this IServiceCollection services, IConfigurationSection sampleConfigSection, bool useInMemoryDb)
+        public static IServiceCollection AddWebApi(this IServiceCollection services, IConfigurationSection sampleConfigSection)
         {
             // Add services to the container.
             _ = services
@@ -102,6 +109,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
 
                 c.CustomSchemaIds(SwashbuckleNameFactory);
+
+                // Enables support for nullable object properties
+                c.UseAllOfToExtendReferenceSchemas();
+                // Enable detection of non nullable reference types to set Nullable flag accordingly on schema properties
+                c.SupportNonNullableReferenceTypes();
             })
             .AddSwaggerGenNewtonsoftSupport();
 
@@ -116,14 +128,14 @@ namespace Microsoft.Extensions.DependencyInjection
                 _ = configure.AddNLog();
             });
 
-            _ = services.AddWebApiBasic(useInMemoryDb);
+            _ = services.AddWebApiEssentials();
 
             return services;
         }
 
         public static IServiceCollection AddWebApiSecurity(this IServiceCollection services, SampleConfig config)
         {
-            services.AddAuthentication(options =>
+            _ = services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -145,31 +157,39 @@ namespace Microsoft.Extensions.DependencyInjection
                 };
             });
 
-            services.AddAuthorization(options =>
+            _ = services.AddAuthorization(options =>
             {
                 options.AddPolicy(Constants.RequireAdminRolePolicyKey, policy =>
                 {
-                    policy.RequireClaim(ClaimTypes.Role, Constants.AdminRoleKey);
+                    _ = policy.RequireClaim(ClaimTypes.Role, Constants.AdminRoleKey);
                 });
             });
 
             return services;
         }
 
-        public static IServiceCollection AddWebApiBasic(this IServiceCollection services, bool useInMemoryDb)
+        // Required for in-memory database. If there are no open connections, the database is deleted
+        public static SqliteConnection? InMemoryKeepAliveConnection { get; private set; }
+
+        public static IServiceCollection AddWebApiEssentials(this IServiceCollection services)
         {
+            var logger = LogManager.GetCurrentClassLogger();
+
             ValidatorOptions.Global.DefaultClassLevelCascadeMode = CascadeMode.Continue;
             ValidatorOptions.Global.DefaultRuleLevelCascadeMode = CascadeMode.Continue;
 
-            services.AddLocalization();
+            _ = services.AddLocalization();
 
             // Add scoped
             services.TryAddScoped<IBookRepository, BookRepository>();
+            services.TryAddScoped<IAuthorRepository, AuthorRepository>();
+            services.TryAddScoped<IConsentRepository, ConsentRepository>();
             services.TryAddScoped<IDatabaseUnitOfWork, DatabaseUnitOfWork>();
 
             // Add transient
-            services.TryAddTransient<IDboMapper<Book, BookDbo, Guid>, BookDboMapper>();
-            services.TryAddTransient<IDtoMapper<Book, BookDto, Guid>, BookDtoMapper>();
+            services.TryAddTransient<IDtoMapper<BookDbo, BookDto, Guid>, BookDtoMapper>();
+            services.TryAddTransient<IDtoMapper<AuthorDbo, AuthorDto, Guid>, AuthorDtoMapper>();
+            services.TryAddTransient<IDtoMapper<ConsentDbo, ConsentDto, Guid>, ConsentDtoMapper>();
 
             // Add misc
             _ = services.AddMediatR(AssemblyLoadContext.Default.Assemblies.ToArray());
@@ -182,17 +202,89 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 var config = serviceProvider.GetRequiredService<IOptions<SampleConfig>>();
 
-                _ = useInMemoryDb
-                    ? options.UseInMemoryDatabase(Constants.ApplicationAcronym)
-                    : options.UseSqlServer(config.Value.DbConnectionString);
-
-                if (useInMemoryDb)
+                if (config.Value.UseInMemoryDb != null)
                 {
-                    _ = options.EnableSensitiveDataLogging();
+                    if (config.Value.UseInMemoryDb == true
+                        && InMemoryKeepAliveConnection == null)
+                    {
+                        var keepAliveConnection = new SqliteConnection(config.Value.DbConnectionString);
+                        keepAliveConnection.Open();
+                        InMemoryKeepAliveConnection = keepAliveConnection;
+                    }
+
+                    if(config.Value.UseInMemoryDb.Value)
+                    {
+                        logger.Info("Using Sqlite");
+                        options.UseSqlite(config.Value.DbConnectionString);
+                    }
+                    else
+                    {
+                        if (config.Value.DbType == DbType.SqlServer)
+                        {
+                            logger.Info("Using SqlServer");
+                            options.UseSqlServer(config.Value.DbConnectionString,
+                                opt => opt.MigrationsAssembly(typeof(SqlServerMigrationsMarker).Assembly.GetName().Name));
+                        }
+                        else if (config.Value.DbType == DbType.Oracle)
+                        {
+                            logger.Info("Using Oracle");
+                            options.UseOracle(config.Value.DbConnectionString,
+                                opt => opt.MigrationsAssembly(typeof(OracleMigrationsMarker).Assembly.GetName().Name));
+                        }
+                        // else we do nothing
+                    }
+
+                    if (config.Value.UseInMemoryDb.Value)
+                    {
+                        _ = options.EnableSensitiveDataLogging();
+                    }
                 }
+                // else we skip context configuration
             });
 
             return services;
+        }
+
+        public static async Task InitializeWebApiAsync(this IServiceProvider services)
+        {
+            var logger = LogManager.GetCurrentClassLogger();
+
+            using var serviceScope = services.GetRequiredService<IServiceScopeFactory>().CreateScope();
+            var config = serviceScope.ServiceProvider.GetRequiredService<IOptions<SampleConfig>>();
+            var hostApplicationLifetime = serviceScope.ServiceProvider.GetRequiredService<IHostApplicationLifetime>();
+
+            if (config.Value.UseInMemoryDb == false)
+            {
+                logger.Info("Migrating database");
+
+                var context = serviceScope.ServiceProvider.GetRequiredService<SampleDbContext>();
+                await context.Database.MigrateAsync(cancellationToken: hostApplicationLifetime.ApplicationStopping);
+            }
+            else if (config.Value.UseInMemoryDb == true)
+            {
+                logger.Info("Creating in-memory database");
+
+                var context = serviceScope.ServiceProvider.GetRequiredService<SampleDbContext>();
+                _ = await context.Database.EnsureCreatedAsync(hostApplicationLifetime.ApplicationStopping);
+            }
+            // else we skip the db initialization
+        }
+
+        public static async Task DeleteDbAsync(this IServiceProvider services)
+        {
+            var logger = LogManager.GetCurrentClassLogger();
+
+            using var serviceScope = services.GetRequiredService<IServiceScopeFactory>().CreateScope();
+            var config = serviceScope.ServiceProvider.GetRequiredService<IOptions<SampleConfig>>();
+            var hostApplicationLifetime = serviceScope.ServiceProvider.GetRequiredService<IHostApplicationLifetime>();
+
+            if (config.Value.UseInMemoryDb == false)
+            {
+                logger.Info("Deleting database");
+
+                var context = serviceScope.ServiceProvider.GetRequiredService<SampleDbContext>();
+                await context.Database.EnsureDeletedAsync(hostApplicationLifetime.ApplicationStopping);
+            }
         }
     }
 }

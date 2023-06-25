@@ -1,9 +1,12 @@
 ﻿using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Domain.AuthorRelated;
 using Domain.BookRelated;
+using Domain.ConsentRelated;
 using Domain.Persistance;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Persistence
 {
@@ -12,6 +15,18 @@ namespace Infrastructure.Persistence
         public SampleDbContext(DbContextOptions<SampleDbContext> options) : base(options) { }
 
         public DbSet<BookDbo> Books { get; set; } = null!;
+        public DbSet<AuthorDbo> Authors { get; set; } = null!;
+        public DbSet<ConsentDbo> Consents { get; set; } = null!;
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            _ = optionsBuilder.ConfigureWarnings(w =>
+            {
+                _ = w.Log((Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.AmbientTransactionWarning, LogLevel.Warning));
+            });
+
+            base.OnConfiguring(optionsBuilder);
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

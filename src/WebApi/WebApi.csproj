@@ -13,28 +13,22 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="NLog.Web.AspNetCore" Version="5.2.3" />
     <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="6.5.0" />
+
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+    <ProjectReference Include="..\Infrastructure.Migrations.Oracle\Infrastructure.Migrations.Oracle.csproj" />
+    <ProjectReference Include="..\Infrastructure.Migrations.SqlServer\Infrastructure.Migrations.SqlServer.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Update="Resources\WebApiText.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>WebApiText.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Resources\WebApiText.resx">
-      <Generator>PublicResXFileCodeGenerator</Generator>
-      <LastGenOutput>WebApiText.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-    <EmbeddedResource Update="Resources\WebApiText.sl.resx">
-      <Generator>PublicResXFileCodeGenerator</Generator>
-    </EmbeddedResource>
-  </ItemGroup>
+  <!-- https://stackoverflow.com/questions/33283071/swagger-webapi-create-json-on-build -->
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(SkipGenerateSwagger)' == ''">
+    <Exec Command="dotnet tool restore" />
+    <Exec Command="dotnet swagger tofile --output openapi_autogen.json $(OutputPath)\$(AssemblyName).dll v1 " />
+  </Target>
 
 </Project>

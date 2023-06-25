@@ -1,11 +1,12 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Domain;
 using Domain.BookRelated;
+using Domain.Dtos;
 using Domain.Persistance;
+using Infrastructure.BookRelated.CommandAndQuery;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using WebApi.BookRelated.CommandAndQuery;
 
 namespace WebApi.BookRelated
 {
@@ -15,53 +16,62 @@ namespace WebApi.BookRelated
     public class BooksController : ControllerBase
     {
         private readonly IMediator mediator;
+        private readonly IDtoMapper<BookDbo, BookDto, Guid> bookMapper;
 
-        public BooksController(IMediator mediator)
+        public BooksController(IMediator mediator, IDtoMapper<BookDbo, BookDto, Guid> bookMapper)
         {
             this.mediator = mediator;
+            this.bookMapper = bookMapper;
         }
 
-        [HttpGet("get/{id}")]
+        [HttpGet("getBook/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<BookDto?>> GetBook([Required] Guid id, CancellationToken cancellationToken)
         {
             var query = new GetBook.Query(id);
-            var bookDto = await mediator.Send(query, cancellationToken);
+            var dto = bookMapper.ToDto(await mediator.Send(query, cancellationToken));
 
-            return Ok(bookDto);
+            return Ok(dto);
         }
 
-        [HttpPost("getPage")]
+        [HttpPost("getPageOfBooks")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<Page<BookDto>>> GetPageOfBooks([FromBody] GetPageOfBooks.Query query, CancellationToken cancellationToken)
+        public async Task<ActionResult<Page<BookDto>>> GetPageOfBooks([Required][FromBody] GetPageOfBooks.Query query, CancellationToken cancellationToken)
         {
-            var page = await mediator.Send(query, cancellationToken);
-            return Ok(page);
+            var bookDbos = await mediator.Send(query, cancellationToken);
+            var bookDtos = new Page<BookDto>
+            (
+                items: bookDbos.Items.Select(bookMapper.ToDto).ToList()!,
+                pageIndex: bookDbos.PageIndex,
+                maxPageIndex: bookDbos.MaxPageIndex,
+                totalItems: bookDbos.TotalItems
+            );
+            return Ok(bookDtos);
         }
 
-        [HttpPut("update")]
+        [HttpPut("updateBook")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<BookDto>> UpdateBook([FromBody] UpdateBook.Command command, CancellationToken cancellationToken)
+        public async Task<ActionResult<BookDto>> UpdateBook([Required][FromBody] UpdateBook.Command command, CancellationToken cancellationToken)
         {
-            var bookDto = await mediator.Send(command, cancellationToken);
+            var dto = bookMapper.ToDto(await mediator.Send(command, cancellationToken));
 
-            return Ok(bookDto);
+            return Ok(dto);
         }
 
-        [HttpPost("create")]
+        [HttpPost("createBook")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<BookDto>> CreateBook([FromBody] CreateBook.Command command, CancellationToken cancellationToken)
+        public async Task<ActionResult<BookDto>> CreateBook([Required][FromBody] CreateBook.Command command, CancellationToken cancellationToken)
         {
-            var bookDto = await mediator.Send(command, cancellationToken);
-            return CreatedAtAction(nameof(GetBook), new { id = bookDto.Id }, bookDto);
+            var dto = bookMapper.ToDto(await mediator.Send(command, cancellationToken));
+            return CreatedAtAction(nameof(GetBook), new { id = dto.Id }, dto);
         }
 
-        [HttpDelete("delete/{id}")]
+        [HttpDelete("deleteBook/{id}")]
         [Authorize(Policy = Constants.RequireAdminRolePolicyKey)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

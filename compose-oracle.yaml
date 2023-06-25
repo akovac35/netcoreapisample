@@ -1,0 +1,36 @@
+version: '3.8'
+services:
+  oracle:
+    image: gvenzl/oracle-free:slim
+    container_name: oracle
+    environment:
+      ORACLE_PASSWORD: password@123!
+      APP_USER: sa
+      APP_USER_PASSWORD: password@123!
+    healthcheck:
+      test: [ "CMD", "/opt/oracle/healthcheck.sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - 1521:1521
+    volumes:
+      - sample-db-data-oracle:/opt/oracle/oradata
+  dotnet-api-oracle:
+    image: sample/dotnet-api
+    container_name: dotnet-api-oracle
+    ports:
+      - 8080:80
+    depends_on:
+      oracle:
+        condition: service_healthy
+    environment:
+      - SampleConfig__DbConnectionString=User Id=sa;Password=password@123!;Data Source=oracle:1521/FREEPDB1;
+      - SampleConfig__JwtConfig__JwtSecretKey=SECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRET
+      - SampleConfig__DbType=Oracle
+      - SampleConfig__UseInMemoryDb=false
+      - ASPNETCORE_ENVIRONMENT=production
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+volumes:
+  sample-db-data-oracle:

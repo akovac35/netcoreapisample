@@ -1,63 +1,60 @@
-﻿using System.CommandLine;
-using Domain;
-using Infrastructure.CommandLine;
+﻿using Microsoft.AspNetCore;
 using NLog;
 using NLog.Web;
 
-var logger = NLogBuilder.ConfigureNLog("NLog.config").GetCurrentClassLogger();
-
-try
+namespace WebApi
 {
-    SampleRootCommand rootCommand = new();
-    var useInMemoryDbOption = rootCommand.AddUseInMemoryDbOption();
-
-    rootCommand.SetHandler(async (context) =>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1052:Static holder types should be Static or NotInheritable", Justification = "Needed for tests")]
+    public class Program
     {
-        var useInMemoryDbOptionValue = context.ParseResult.GetValueForOption(useInMemoryDbOption);
-
-        var builder = WebApplication.CreateBuilder(args);
-        _ = builder.WebHost.UseDefaultServiceProvider((context, options) =>
+        public static async Task Main(string[] args)
         {
-            options.ValidateScopes = true;
-        });
+            var logger = NLogBuilder.ConfigureNLog("NLog.config").GetCurrentClassLogger();
 
-        var sampleConfigSection = builder.Configuration.GetRequiredSection(nameof(SampleConfig));
+            try
+            {
+                logger.Info("Starting host");
+                using var host = CreateHostBuilder(args).Build();
+                await host.Services.InitializeWebApiAsync();
+                host.Run();
+                logger.Info("Stopping host");
+            }
+            catch (Exception ex)
+            {
+                logger.Fatal(ex, ex.Message);
+                throw;
+            }
+            finally
+            {
+                try
+                {
+                    LogManager.Flush();
+                }
+                catch
+                {
+                }
 
-        _ = builder.Services.AddWebApi(sampleConfigSection, useInMemoryDbOptionValue);
+                try
+                {
+                    LogManager.Shutdown();
+                }
+                catch
+                {
+                }
+            }
+        }
 
-        var app = builder.Build();
-
-        _ = app.UseWebApi();
-
-        await app.InitializeWebApi(useInMemoryDb: useInMemoryDbOptionValue);
-
-        await app.RunAsync(context.GetCancellationToken());
-    });
-
-    logger.Info("Starting host");
-    _ = await rootCommand.InvokeAsync(args);
-    logger.Info("Exiting host");
+        public static IWebHostBuilder CreateHostBuilder(string[] args)
+        {
+            return WebHost.CreateDefaultBuilder(args)
+                .UseStartup<Startup>()
+                .UseDefaultServiceProvider((context, options) =>
+                {
+#if DEBUG
+                    options.ValidateScopes = true;
+#endif
+                });
+        }
+    }
 }
-catch (Exception ex)
-{
-    logger.Fatal(ex, ex.Message);
-    throw;
-}
-finally
-{
-    try
-    {
-        LogManager.Flush();
-    }
-    catch
-    {
-    }
 
-    try
-    {
-        LogManager.Shutdown();
-    }
-    catch
-    {
-    }
-}

@@ -1,1 +1,0 @@
-dotnet ef migrations add CreateDb --configuration Release

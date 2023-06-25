@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: sql-server
+    environment:
+      SA_PASSWORD: YourStrong@Passw0rd
+      ACCEPT_EULA: Y
+    ports:
+      - 14333:1433
+    volumes:
+      - sample-db-data-sql-server:/var/opt/mssql
+  dotnet-api-sqlserver:
+    image: sample/dotnet-api
+    container_name: dotnet-api-sqlserver
+    ports:
+      - 8080:80
+    depends_on:
+      - sql-server
+    environment:
+      - SampleConfig__DbConnectionString=Server=sql-server;Database=Sample;User=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - SampleConfig__JwtConfig__JwtSecretKey=SECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRET
+      - SampleConfig__DbType=SqlServer
+      - SampleConfig__UseInMemoryDb=false
+      - ASPNETCORE_ENVIRONMENT=production
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+volumes:
+  sample-db-data-sql-server:

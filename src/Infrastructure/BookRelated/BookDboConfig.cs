@@ -13,6 +13,15 @@ namespace Infrastructure.BookRelated
             base.Configure(builder);
 
             _ = builder.ToTable(nameof(SampleDbContext.Books), b => b.IsTemporal());
+
+            // We update row version outside db before saving an updated dbo. So the computed column
+            // will be updated only when a changed dbo was saved
+            _ = builder.Property(b => b.DbComputedColumn)
+                .HasComputedColumnSql($"\"{nameof(BookDbo.RowVersion)}\" + 1");
+
+            _ = builder.Property(b => b.DbDefaultValueColumn)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
         }
     }
 }

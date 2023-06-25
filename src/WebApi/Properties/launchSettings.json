@@ -1,16 +1,47 @@
 ﻿{
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "WebApi-useInMemoryDb": {
+    "WebApi-UseInMemoryDb": {
       "commandName": "Project",
-      "commandLineArgs": "--useInMemoryDb true",
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
       "applicationUrl": "http://localhost:5219",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "SampleConfig__UseInMemoryDb": "true",
+        "SampleConfig__DbConnectionString": "DataSource=sampledb;mode=memory;cache=shared;",
+        "SampleConfig__DbType": "None"
+      }
+    },
+
+    "WebApi-UseSqlServer": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "http://localhost:5219",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "SampleConfig__UseInMemoryDb": "false",
+        "SampleConfig__DbConnectionString": "Server=localhost,14333; Database=Sample; User Id=sa; Password=YourStrong@Passw0rd; TrustServerCertificate=True;",
+        "SampleConfig__DbType": "SqlServer"
+      }
+    },
+
+    "WebApi-UseOracle": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "http://localhost:5219",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "SampleConfig__UseInMemoryDb": "false",
+        "SampleConfig__DbConnectionString": "User Id=sa;Password=password@123!;Data Source=localhost:1521/FREEPDB1;",
+        "SampleConfig__DbType": "Oracle"
       }
     }
+
   }
 }

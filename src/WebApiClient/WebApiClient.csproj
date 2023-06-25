@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="$(ProjectDir)../../ProjectConfig.xml" />
+
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>embedded</DebugType>
+
+    <!-- Only enable the following if the line numbers mismatch -->
+    <Optimize>false</Optimize>
+
+    <!--
+      Additional properties which may impact how printed line numbers match the source code line numbers are listed here:
+      https://docs.microsoft.com/en-us/dotnet/core/run-time-config/compilation
+    -->
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <OpenApiGenerateCodeOnBuild>true</OpenApiGenerateCodeOnBuild>
+    <OpenApiGenerateCodeAtDesignTime>true</OpenApiGenerateCodeAtDesignTime>
+    <OpenApiBuildReferencedProjects>true</OpenApiBuildReferencedProjects>
+  </PropertyGroup>
+
+  <!-- https://github.com/RicoSuter/NSwag/wiki/ClientGeneratorBaseSettings -->
+  <!-- https://github.com/RicoSuter/NSwag/wiki/CSharpClientGeneratorSettings -->
+  <ItemGroup>
+    <OpenApiReference Include="..\WebApi\openapi_autogen.json" CodeGenerator="NSwagCSharp" Namespace="WebApiClient">
+      <Options>/GenerateDtoTypes:true /GenerateNullableReferenceTypes:true /GenerateClientInterfaces:true</Options>
+      <ClassName>Client</ClassName>
+    </OpenApiReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="NSwag.ApiDescription.Client" Version="13.19.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

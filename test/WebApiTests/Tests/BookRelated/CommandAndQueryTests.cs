@@ -1,12 +1,11 @@
-﻿using System.Text;
-using Domain;
+﻿using System.Linq.Expressions;
+using Domain.AuthorRelated;
 using Domain.BookRelated;
 using FluentAssertions;
+using Infrastructure.BookRelated.CommandAndQuery;
 using MediatR;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
-using WebApi.BookRelated.CommandAndQuery;
 
 namespace WebApiTests.Tests.BookRelated
 {
@@ -15,23 +14,23 @@ namespace WebApiTests.Tests.BookRelated
         [Test]
         public async Task CreateBook_CreatesBook()
         {
-            using var scope = TestHelper.CreateTestServices(out var bookRepositoryMock).CreateScope();
+            using var scope = TestHelper.CreateTestServices(out var bookRepositoryMock, out var authorRepositoryMock).CreateScope();
             var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
 
-            var command = new CreateBook.Command
+            var createBookCommand = new CreateBook.Command
             {
                 Title = "Test book",
-                Author = "Test Author",
+                AuthorUniqueId = Guid.NewGuid(),
                 Year = 2000,
                 Publisher = "MK"
             };
 
-            var bookDto = await mediator.Send(command);
+            var bookDbo = await mediator.Send(createBookCommand);
 
-            _ = bookDto.Should().NotBeNull();
-            _ = bookDto.Should().BeEquivalentTo(command);
-            bookRepositoryMock.Verify(x => x.AddAsync(
-                It.IsAny<Book>(),
+            _ = bookDbo.Should().NotBeNull();
+            _ = bookDbo.Should().BeEquivalentTo(createBookCommand, options => options.Excluding(o => o.AuthorUniqueId));
+            bookRepositoryMock.Verify(x => x.AddOrUpdateAsync(
+                It.IsAny<BookDbo>(),
                 It.IsAny<CancellationToken>()
             ), Times.Once());
         }
@@ -41,38 +40,15 @@ namespace WebApiTests.Tests.BookRelated
 
     public static class TestHelper
     {
-        public static ServiceProvider CreateTestServices(out Mock<IBookRepository> bookRepositoryMock)
+        public static ServiceProvider CreateTestServices(out Mock<IBookRepository> bookRepositoryMock, out Mock<IAuthorRepository> authorRepositoryMock)
         {
             var services = new ServiceCollection();
 
-            _ = services.AddTestConfig();
-            _ = services.CreateTestMocks(out bookRepositoryMock);
-            _ = services.AddWebApiBasic(useInMemoryDb: false);
-
-            var provider = services.BuildServiceProvider();
-            return provider;
-        }
-
-        private static IServiceCollection CreateTestMocks(this IServiceCollection services, out Mock<IBookRepository> bookRepositoryMock)
-        {
-            bookRepositoryMock = new Mock<IBookRepository>();
-            _ = bookRepositoryMock.Setup(_ => _.AddAsync(
-                It.IsAny<Book>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Book value, CancellationToken cancellationToken) => value
-                );
-            var bookRepository = bookRepositoryMock.Object;
-            _ = services.AddScoped(f => bookRepository);
-
-            return services;
-        }
-
-        private static IServiceCollection AddTestConfig(this IServiceCollection services)
-        {
             var appSettings = """
             {
               "SampleConfig": {
                 "DbConnectionString": "N/A",
+                "UseInMemoryDb": null,
 
                 "JwtConfig": {
                   "TokenValidityInMinutes": "10"
@@ -81,19 +57,32 @@ namespace WebApiTests.Tests.BookRelated
             }
             """;
 
-            var builder = new ConfigurationBuilder();
+            _ = services.AddLogging();
+            _ = services.AddTestConfig(appSettings);
+            _ = services.CreateTestMocks(out bookRepositoryMock, out authorRepositoryMock);
+            _ = services.AddWebApiEssentials();
 
-            _ = builder.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(appSettings)));
+            var provider = services.BuildServiceProvider();
+            return provider;
+        }
 
-            var configuration = builder.Build();
+        private static IServiceCollection CreateTestMocks(this IServiceCollection services, out Mock<IBookRepository> bookRepositoryMock, out Mock<IAuthorRepository> authorRepositoryMock)
+        {
+            bookRepositoryMock = new Mock<IBookRepository>();
+            _ = bookRepositoryMock.Setup(_ => _.AddOrUpdateAsync(
+                It.IsAny<BookDbo>(),
+                It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(false));
+            var bookRepository = bookRepositoryMock.Object;
+            _ = services.AddScoped(f => bookRepository);
 
-            var configSection = configuration.GetRequiredSection(nameof(SampleConfig));
-
-            _ = services
-                .AddOptions<SampleConfig>()
-                .Bind(configSection)
-                .ValidateDataAnnotations()
-                .ValidateOnStart();
+            authorRepositoryMock = new Mock<IAuthorRepository>();
+            _ = authorRepositoryMock.Setup(_ => _.GetAsync(
+                    It.IsAny<Expression<Func<AuthorDbo, bool>>>(),
+                    It.IsAny<CancellationToken>()
+                )).Returns(Task.FromResult(new AuthorDbo { FirstName = "George", LastName = "Orwell", UniqueId = Guid.NewGuid() })!);
+            var authorRepository = authorRepositoryMock.Object;
+            _ = services.AddScoped(f => authorRepository);
 
             return services;
         }

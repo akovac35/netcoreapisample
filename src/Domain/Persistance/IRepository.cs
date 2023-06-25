@@ -6,34 +6,20 @@ using System.Threading.Tasks;
 
 namespace Domain.Persistance
 {
-    public interface IRepository<T, TDbo, TUniqueId>
-        where T : class, IDboMappable<TUniqueId>
+    public interface IRepository<TDbo, TUniqueId>
         where TDbo : DboBase<TUniqueId>
         where TUniqueId : notnull, IEquatable<TUniqueId>
     {
-        /// <returns>
-        /// The returned instance is a new value mapped from dbo
-        /// after applying database generated values.
-        /// </returns>
-        Task<(bool IsDbUpdated, T Instance)> AddOrUpdateAsync(T value, CancellationToken cancellationToken);
 
-        /// <returns>
-        /// The returned instance is a new value mapped from dbo
-        /// after applying database generated values.
-        /// </returns>
-        Task<T> AddAsync(T value, CancellationToken cancellationToken);
-
-        /// <returns>
-        /// The returned instance is a new value mapped from dbo
-        /// after applying database generated values.
-        /// </returns>
-        Task<T> UpdateAsync(T value, CancellationToken cancellationToken);
+        /// <returns>Returns true is value was updated.</returns>
+        /// <remarks>Database generated values are applied directly to value.</remarks>
+        Task<bool> AddOrUpdateAsync(TDbo value, CancellationToken cancellationToken);
 
         Task<int> DeleteAsync(Expression<Func<TDbo, bool>> predicate, CancellationToken cancellationToken);
 
-        Task<T?> GetAsync(Expression<Func<TDbo, bool>> predicate, CancellationToken cancellationToken);
+        Task<TDbo?> GetAsync(Expression<Func<TDbo, bool>> predicate, CancellationToken cancellationToken);
 
-        Task<Page<T>> ListAsync(
+        Task<Page<TDbo>> ListAsync(
             Expression<Func<TDbo, bool>> predicate,
             CancellationToken cancellationToken,
             int pageIndex = 0,
