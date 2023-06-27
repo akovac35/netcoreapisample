@@ -12,7 +12,10 @@ namespace WebApi.AuthorRelated
     [ApiController]
     [Route("[controller]")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public class AuthorsController : ControllerBase
     {
@@ -27,7 +30,6 @@ namespace WebApi.AuthorRelated
 
         [HttpGet("getAuthor/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<AuthorDto?>> GetAuthor([Required] Guid id, CancellationToken cancellationToken)
         {
             var query = new GetAuthor.Query(id);
@@ -37,9 +39,7 @@ namespace WebApi.AuthorRelated
         }
 
         [HttpPut("updateAuthor")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status200OK)]        
         public async Task<ActionResult<AuthorDto>> UpdateAuthor([Required][FromBody] UpdateAuthor.Command command, CancellationToken cancellationToken)
         {
             var dto = authorMapper.ToDto(await mediator.Send(command, cancellationToken));
@@ -49,7 +49,6 @@ namespace WebApi.AuthorRelated
 
         [HttpPost("createAuthor")]
         [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<AuthorDto>> CreateAuthor([Required][FromBody] CreateAuthor.Command command, CancellationToken cancellationToken)
         {
             var dto = authorMapper.ToDto(await mediator.Send(command, cancellationToken));
@@ -59,7 +58,6 @@ namespace WebApi.AuthorRelated
         [HttpDelete("deleteAuthor/{id}")]
         [Authorize(Policy = Constants.RequireAdminRolePolicyKey)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<int>> DeleteAuthor([Required] Guid id, CancellationToken cancellationToken)
         {
             var command = new DeleteAuthor.Command(id);

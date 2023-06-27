@@ -3,15 +3,19 @@ using System.Text.Json;
 using Domain.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
+using WebApi.Resources;
 
 namespace WebApi.Middleware
 {
     public class ExceptionHandlingMiddleware : IMiddleware
     {
+        private readonly IStringLocalizer<WebApiText> localizer;
         private readonly ILogger<ExceptionHandlingMiddleware> logger;
 
-        public ExceptionHandlingMiddleware(ILogger<ExceptionHandlingMiddleware> logger)
+        public ExceptionHandlingMiddleware(IStringLocalizer<WebApiText> localizer, ILogger<ExceptionHandlingMiddleware> logger)
         {
+            this.localizer = localizer;
             this.logger = logger;
         }
 
@@ -28,7 +32,8 @@ namespace WebApi.Middleware
                 await HandleExceptionAsync(context, e);
             }
         }
-        private static async Task HandleExceptionAsync(HttpContext httpContext, Exception exception)
+
+        private async Task HandleExceptionAsync(HttpContext httpContext, Exception exception)
         {
             var response = new ProblemDetails()
             {
@@ -46,26 +51,30 @@ namespace WebApi.Middleware
             httpContext.Response.StatusCode = response.Status.Value;
             await httpContext.Response.WriteAsync(JsonSerializer.Serialize(response));
         }
-        private static int GetStatusCode(Exception exception)
+
+        private int GetStatusCode(Exception exception)
         {
             return exception switch
             {
                 ValidationException => StatusCodes.Status400BadRequest,
                 SampleNotFoundException => StatusCodes.Status404NotFound,
+                SampleUnauthorizedException => StatusCodes.Status401Unauthorized,
+                SampleForbiddenException => StatusCodes.Status403Forbidden,
                 SampleException => StatusCodes.Status400BadRequest,
-                UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
                 _ => StatusCodes.Status500InternalServerError
             };
         }
 
-        private static string GetTitle(Exception exception)
+        private string GetTitle(Exception exception)
         {
             return exception switch
             {
-                ValidationException => "Data validation error",
-                SampleException => "Business logic error",
-                UnauthorizedAccessException => "Unauthorized",
-                _ => "Server error"
+                ValidationException => localizer["TitleForDataValidationError"].Value,
+                SampleNotFoundException => localizer["TitleForNotFoundError"].Value,
+                SampleUnauthorizedException => localizer["TitleForUnauthorizedError"].Value,
+                SampleForbiddenException => localizer["TitleForForbiddenError"].Value,
+                SampleException => localizer["TitleForBusinessError"].Value,
+                _ => localizer["TitleForTechnicalError"].Value
             };
         }
     }

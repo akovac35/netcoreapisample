@@ -18,6 +18,7 @@ using Infrastructure.Migrations.SqlServer;
 using Infrastructure.Persistence;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -164,6 +165,8 @@ namespace Microsoft.Extensions.DependencyInjection
                     _ = policy.RequireClaim(ClaimTypes.Role, Constants.AdminRoleKey);
                 });
             });
+
+            _ = services.AddSingleton<IAuthorizationMiddlewareResultHandler, SampleAuthorizationMiddlewareResultHandler>();
 
             return services;
         }

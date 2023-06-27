@@ -9,6 +9,9 @@ namespace WebApi.AuthenticationAndAuthorizationRelated
 {
     [ApiController]
     [Route("[controller]")]
+
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public class AuthenticationController : ControllerBase
     {
@@ -22,7 +25,6 @@ namespace WebApi.AuthenticationAndAuthorizationRelated
         [AllowAnonymous]
         [HttpPost("createAuthenticationToken")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<TokenDto>> CreateAuthenticationToken([Required][FromBody] CreateAuthenticationToken.Command command, CancellationToken cancellationToken)
         {
             var token = await mediator.Send(command, cancellationToken);

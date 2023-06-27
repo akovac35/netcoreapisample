@@ -13,7 +13,10 @@ namespace WebApi.BookRelated
     [ApiController]
     [Route("[controller]")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public class BooksController : ControllerBase
     {
@@ -28,7 +31,6 @@ namespace WebApi.BookRelated
 
         [HttpGet("getBook/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<BookDto?>> GetBook([Required] Guid id, CancellationToken cancellationToken)
         {
             var query = new GetBook.Query(id);
@@ -39,7 +41,6 @@ namespace WebApi.BookRelated
 
         [HttpPost("getPageOfBooks")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<Page<BookDto>>> GetPageOfBooks([Required][FromBody] GetPageOfBooks.Query query, CancellationToken cancellationToken)
         {
             var bookDbos = await mediator.Send(query, cancellationToken);
@@ -55,8 +56,6 @@ namespace WebApi.BookRelated
 
         [HttpPut("updateBook")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<BookDto>> UpdateBook([Required][FromBody] UpdateBook.Command command, CancellationToken cancellationToken)
         {
             var dto = bookMapper.ToDto(await mediator.Send(command, cancellationToken));
@@ -66,7 +65,6 @@ namespace WebApi.BookRelated
 
         [HttpPost("createBook")]
         [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<BookDto>> CreateBook([Required][FromBody] CreateBook.Command command, CancellationToken cancellationToken)
         {
             var dto = bookMapper.ToDto(await mediator.Send(command, cancellationToken));
@@ -76,7 +74,6 @@ namespace WebApi.BookRelated
         [HttpDelete("deleteBook/{id}")]
         [Authorize(Policy = Constants.RequireAdminRolePolicyKey)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<int>> DeleteBook([Required] Guid id, CancellationToken cancellationToken)
         {
             var command = new DeleteBook.Command(id);
