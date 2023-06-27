@@ -24,7 +24,7 @@ This project contains a .NET Core API sample. The following is demonstrated:
 * integration testing using generated .NET API client,
 * ...
 
-To start the sample, run:
+To start the sample, run the following commands in solution root:
 
 * `dotnet tool restore`
 * `./scripts/build_docker.sh`
